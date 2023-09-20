@@ -70,7 +70,7 @@ async fn index(data: Datum) -> impl Responder {
         writeln!(body, "<tr>").unwrap();
         writeln!(
             body,
-            "<td><a href=/pic?id={0}>{}</a></td><td>{}</td>",
+            "<td><a href=/pic?id={0}>{}</a></td><td>{:.6}</td>",
             record.id, record.dde
         )
         .unwrap();
