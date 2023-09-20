@@ -65,8 +65,12 @@ async fn index(data: Datum) -> impl Responder {
     use std::fmt::Write;
     let mut body = String::new();
     let records = data.records.read().unwrap();
-    writeln!(body, "<table>").unwrap();
-    for record in records.iter() {
+    writeln!(body, "<table id=\"myTable2\">").unwrap();
+    writeln!(body, "<tr>").unwrap();
+    writeln!(body, "<th onclick=\"sortTable(0)\">Record ID</th>").unwrap();
+    writeln!(body, "<th onclick=\"sortTable(1)\">DDE</th>").unwrap();
+    writeln!(body, "</tr>").unwrap();
+    for record in records.iter().take(10) {
         writeln!(body, "<tr>").unwrap();
         writeln!(
             body,
@@ -124,6 +128,7 @@ macro_rules! file_handlers {
 
 file_handlers! {
     css_file => "css/"
+    js_file => "js/"
 }
 
 #[actix_web::main]
@@ -144,6 +149,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .route("/", web::get().to(index))
             .route("/pic", web::get().to(pic))
             .route("/css/{filename:.*}", web::get().to(css_file))
+            .route("/js/{filename:.*}", web::get().to(js_file))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
