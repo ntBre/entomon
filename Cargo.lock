@@ -502,6 +502,7 @@ dependencies = [
  "csv",
  "ligand",
  "openff-toolkit",
+ "percent-encoding",
  "serde",
 ]
 
