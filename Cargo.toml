@@ -10,3 +10,5 @@ csv = "1.2.2"
 serde = { version = "1.0.188", features = ["derive"] }
 openff-toolkit = { path = "../openff-toolkit" }
 ligand = { path = "../ligand" }
+actix-web = "4.4.0"
+actix-files = "0.6.2"
