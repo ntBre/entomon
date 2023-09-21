@@ -86,8 +86,8 @@ async fn index(data: Datum, req: HttpRequest) -> impl Responder {
         if shown >= PAGE_LIMIT {
             break;
         }
-        writeln!(body, "<tr>").unwrap();
-        write!(body, "<td><a href=/?id={0}>{}</a></td>", record.id).unwrap();
+        write!(body, "<tr>\n<td><a href=/?id={0}>{}</a></td>", record.id)
+            .unwrap();
         for val in record.vals.iter() {
             write!(body, "<td>{val:.6}</td>").unwrap();
         }
