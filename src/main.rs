@@ -68,15 +68,21 @@ async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     let mut body = String::new();
     let records = data.rows.read().unwrap();
     let names = data.names.read().unwrap();
-    writeln!(body, "<table id=\"myTable2\">").unwrap();
-    writeln!(body, "<tr>").unwrap();
-    writeln!(body, "<th onclick=\"sortTable(0)\">Record ID</th>").unwrap();
+    writeln!(
+        body,
+        r#"<table id="myTable2">
+            <tr>
+            <th onclick="sortTable(0)">Record ID</th>"#
+    )
+    .unwrap();
     for (i, name) in names.iter().enumerate() {
         writeln!(body, "<th onclick=\"sortTable({})\">{name}</th>", i + 1)
             .unwrap();
     }
     writeln!(body, "</tr>").unwrap();
-    for record in records.iter() {
+    let page = data.page;
+    const PAGE_SIZE: usize = 200;
+    for record in &records[page * PAGE_SIZE..(page + 1) * PAGE_SIZE] {
         writeln!(body, "<tr>").unwrap();
         write!(body, "<td><a href=/?id={0}>{}</a></td>", record.id).unwrap();
         for val in record.vals.iter() {
@@ -105,6 +111,7 @@ struct State {
     rows: RwLock<Vec<Row>>,
     names: RwLock<Vec<String>>,
     map: RwLock<HashMap<String, String>>,
+    page: usize,
 }
 
 impl State {
@@ -117,6 +124,7 @@ impl State {
             rows: RwLock::new(records),
             names: RwLock::new(names),
             map: RwLock::new(map),
+            page: 0,
         }
     }
 }
