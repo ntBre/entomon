@@ -119,26 +119,37 @@ async fn index(data: Datum, req: HttpRequest) -> impl Responder {
 
     use std::fmt::Write;
     let mut body = String::new();
-    let records = data.records.read().unwrap();
+    let records = data.rows.read().unwrap();
+    let names = data.names.read().unwrap();
     writeln!(body, "<table id=\"myTable2\">").unwrap();
     writeln!(body, "<tr>").unwrap();
     writeln!(body, "<th onclick=\"sortTable(0)\">Record ID</th>").unwrap();
-    writeln!(body, "<th onclick=\"sortTable(1)\">DDE</th>").unwrap();
+    for (i, name) in names.iter().enumerate() {
+        writeln!(body, "<th onclick=\"sortTable({})\">{name}</th>", i + 1)
+            .unwrap();
+    }
     writeln!(body, "</tr>").unwrap();
     for record in records.iter() {
         // either the query is empty or it is some and matches
-        if query.as_ref().is_some_and(|q| q(vec![record.dde]))
-            || query.as_ref().is_none()
-        {
-            writeln!(body, "<tr>").unwrap();
-            writeln!(
-                body,
-                "<td><a href=/pic?id={0}>{}</a></td><td>{:.6}</td>",
-                record.id, record.dde
-            )
-            .unwrap();
-            writeln!(body, "</tr>").unwrap();
+        // TODO reinstate query after I get all three showing
+        // if query.as_ref().is_some_and(|q| q(vec![record.dde]))
+        //     || query.as_ref().is_none()
+        // {
+        //     writeln!(body, "<tr>").unwrap();
+        //     writeln!(
+        //         body,
+        //         "<td><a href=/pic?id={0}>{}</a></td><td>{:.6}</td>",
+        //         record.id, record.dde
+        //     )
+        //     .unwrap();
+        //     writeln!(body, "</tr>").unwrap();
+        // }
+        writeln!(body, "<tr>").unwrap();
+        write!(body, "<td><a href=/pic?id={0}>{}</a></td>", record.id).unwrap();
+        for val in record.vals.iter() {
+            write!(body, "<td>{val:.6}</td>").unwrap();
         }
+        writeln!(body, "</tr>").unwrap();
     }
     writeln!(body, "</table>").unwrap();
 
@@ -158,14 +169,20 @@ async fn pic(data: Datum, req: HttpRequest) -> impl Responder {
 
 #[allow(unused)]
 struct State {
-    records: RwLock<Vec<Record>>,
+    rows: RwLock<Vec<Row>>,
+    names: RwLock<Vec<String>>,
     map: RwLock<HashMap<String, String>>,
 }
 
 impl State {
-    fn new(records: Vec<Record>, map: HashMap<String, String>) -> Self {
+    fn new(
+        records: Vec<Row>,
+        map: HashMap<String, String>,
+        names: Vec<String>,
+    ) -> Self {
         Self {
-            records: RwLock::new(records),
+            rows: RwLock::new(records),
+            names: RwLock::new(names),
             map: RwLock::new(map),
         }
     }
@@ -190,17 +207,54 @@ file_handlers! {
     js_file => "js/"
 }
 
+struct Row {
+    id: String,
+    vals: Vec<f64>,
+}
+
+fn build_rows(records: Vec<Vec<Record>>) -> Vec<Row> {
+    let mut map = HashMap::new();
+    let lr = records.len();
+    for set in records {
+        for record in set {
+            map.entry(record.id).or_insert(Vec::new()).push(record.dde);
+        }
+    }
+
+    let mut ret = Vec::new();
+    for (id, vals) in map {
+        if vals.len() == lr {
+            ret.push(Row { id, vals });
+        } else {
+            eprintln!(
+                "warning: omitting record {id} for {}/{lr} fields",
+                vals.len()
+            );
+        }
+    }
+    ret
+}
+
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let records = load_records(
+    let tm = load_records(
         "/home/brent/omsf/projects/benchmarking/output/industry/tm/dde.csv",
     );
+    let sage_tm = load_records(
+        "/home/brent/omsf/projects/benchmarking/output/industry/sage-tm/dde.csv",
+    );
+    let sage = load_records(
+        "/home/brent/omsf/projects/benchmarking/output/industry/sage-2.1.0/dde.csv",
+    );
+
+    let names = vec!["TM".to_owned(), "Sage-TM".to_owned(), "Sage".to_owned()];
+    let rows = build_rows(vec![tm, sage_tm, sage]);
 
     let map = load_dataset(
         "/home/brent/omsf/projects/benchmarking/datasets/industry.json",
     );
 
-    let state = web::Data::new(State::new(records, map));
+    let state = web::Data::new(State::new(rows, map, names));
 
     HttpServer::new(move || {
         App::new()
