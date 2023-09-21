@@ -131,25 +131,17 @@ async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     writeln!(body, "</tr>").unwrap();
     for record in records.iter() {
         // either the query is empty or it is some and matches
-        // TODO reinstate query after I get all three showing
-        // if query.as_ref().is_some_and(|q| q(vec![record.dde]))
-        //     || query.as_ref().is_none()
-        // {
-        //     writeln!(body, "<tr>").unwrap();
-        //     writeln!(
-        //         body,
-        //         "<td><a href=/pic?id={0}>{}</a></td><td>{:.6}</td>",
-        //         record.id, record.dde
-        //     )
-        //     .unwrap();
-        //     writeln!(body, "</tr>").unwrap();
-        // }
-        writeln!(body, "<tr>").unwrap();
-        write!(body, "<td><a href=/pic?id={0}>{}</a></td>", record.id).unwrap();
-        for val in record.vals.iter() {
-            write!(body, "<td>{val:.6}</td>").unwrap();
+        if query.as_ref().is_some_and(|q| q(record.vals.clone()))
+            || query.as_ref().is_none()
+        {
+            writeln!(body, "<tr>").unwrap();
+            write!(body, "<td><a href=/pic?id={0}>{}</a></td>", record.id)
+                .unwrap();
+            for val in record.vals.iter() {
+                write!(body, "<td>{val:.6}</td>").unwrap();
+            }
+            writeln!(body, "</tr>").unwrap();
         }
-        writeln!(body, "</tr>").unwrap();
     }
     writeln!(body, "</table>").unwrap();
 
