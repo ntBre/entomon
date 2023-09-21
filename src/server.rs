@@ -78,9 +78,7 @@ pub async fn api(data: Datum, info: web::Json<Info>) -> impl Responder {
     match info.0 {
         Info::Show(to_show) => {
             for (i, row) in rows.iter_mut().enumerate() {
-                if !to_show.contains(&i) {
-                    row.show = false;
-                }
+                row.show = to_show.contains(&i);
             }
         }
         Info::All => {
