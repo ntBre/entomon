@@ -63,10 +63,6 @@ file_handlers! {
     js_file => "js/"
 }
 
-fn load(path: impl AsRef<Path>) -> String {
-    fs::read_to_string(path).unwrap()
-}
-
 pub async fn get_data(data: Datum) -> impl Responder {
     HttpResponse::Ok().body(serde_json::to_string(&data).unwrap())
 }
@@ -131,7 +127,8 @@ pub async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     }
     writeln!(body, "</table>").unwrap();
 
-    let index = load("static/index.html")
+    let index = fs::read_to_string("static/index.html")
+        .unwrap()
         .replace("{{query}}", &data.query.read().unwrap());
     let query = req.query_string();
     let index = if !query.is_empty() {
