@@ -503,6 +503,7 @@ dependencies = [
  "ligand",
  "openff-toolkit",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

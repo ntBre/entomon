@@ -3,6 +3,7 @@
 //! web ui for debugging torsion multiplicity issues
 
 use actix_files::NamedFile;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::{
     collections::HashMap,
@@ -63,6 +64,41 @@ fn load(path: impl AsRef<Path>) -> String {
 
 type Datum = web::Data<State>;
 
+#[derive(Debug, Deserialize)]
+enum Info {
+    Show(Vec<usize>),
+    All,
+}
+
+async fn get_data(data: Datum) -> impl Responder {
+    HttpResponse::Ok().body(serde_json::to_string(&data).unwrap())
+}
+
+async fn set_query(data: Datum, info: web::Json<String>) -> impl Responder {
+    let mut data = data.query.write().unwrap();
+    *data = info.0;
+    HttpResponse::Ok()
+}
+
+async fn api(data: Datum, info: web::Json<Info>) -> impl Responder {
+    let mut rows = data.rows.write().unwrap();
+    match info.0 {
+        Info::Show(to_show) => {
+            for (i, row) in rows.iter_mut().enumerate() {
+                if !to_show.contains(&i) {
+                    row.show = false;
+                }
+            }
+        }
+        Info::All => {
+            for row in rows.iter_mut() {
+                row.show = true;
+            }
+        }
+    };
+    HttpResponse::Ok()
+}
+
 async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     use std::fmt::Write;
     let mut body = String::new();
@@ -82,13 +118,15 @@ async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     writeln!(body, "</tr>").unwrap();
     const PAGE_LIMIT: usize = 200;
     let mut shown = 0;
-    for record in records.iter() {
+    for row in records.iter() {
+        if !row.show {
+            continue;
+        }
         if shown >= PAGE_LIMIT {
             break;
         }
-        write!(body, "<tr>\n<td><a href=/?id={0}>{}</a></td>", record.id)
-            .unwrap();
-        for val in record.vals.iter() {
+        write!(body, "<tr>\n<td><a href=/?id={0}>{}</a></td>", row.id).unwrap();
+        for val in row.vals.iter() {
             write!(body, "<td>{val:.6}</td>").unwrap();
         }
         writeln!(body, "</tr>").unwrap();
@@ -96,7 +134,8 @@ async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     }
     writeln!(body, "</table>").unwrap();
 
-    let index = load("static/index.html");
+    let index = load("static/index.html")
+        .replace("{{query}}", &data.query.read().unwrap());
     let query = req.query_string();
     let index = if !query.is_empty() {
         let map = data.map.read().unwrap();
@@ -107,14 +146,16 @@ async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     } else {
         index.replace("{{pic}}", "")
     };
+
     HttpResponse::Ok().body(index.replace("{{body}}", &body))
 }
 
-#[allow(unused)]
+#[derive(Serialize)]
 struct State {
     rows: RwLock<Vec<Row>>,
     names: RwLock<Vec<String>>,
     map: RwLock<HashMap<String, String>>,
+    query: RwLock<String>,
 }
 
 impl State {
@@ -127,6 +168,7 @@ impl State {
             rows: RwLock::new(records),
             names: RwLock::new(names),
             map: RwLock::new(map),
+            query: RwLock::new(String::new()),
         }
     }
 }
@@ -150,9 +192,11 @@ file_handlers! {
     js_file => "js/"
 }
 
+#[derive(Serialize)]
 struct Row {
     id: String,
     vals: Vec<f64>,
+    show: bool,
 }
 
 fn build_rows(records: Vec<Vec<Record>>) -> Vec<Row> {
@@ -167,7 +211,11 @@ fn build_rows(records: Vec<Vec<Record>>) -> Vec<Row> {
     let mut ret = Vec::new();
     for (id, vals) in map {
         if vals.len() == lr {
-            ret.push(Row { id, vals });
+            ret.push(Row {
+                id,
+                vals,
+                show: true,
+            });
         } else {
             eprintln!(
                 "warning: omitting record {id} for {}/{lr} fields",
@@ -199,6 +247,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         App::new()
             .app_data(state.clone())
             .route("/", web::get().to(index))
+            .route("/api", web::post().to(api))
+            .route("/api", web::get().to(get_data))
+            .route("/set-query", web::post().to(set_query))
             .route("/css/{filename:.*}", web::get().to(css_file))
             .route("/js/{filename:.*}", web::get().to(js_file))
     })
