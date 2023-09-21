@@ -38,3 +38,10 @@ function doQuery() {
 		return response.json()
 	}).then(makeHandler(expr));
 }
+
+function myReset() {
+	console.log("calling clear");
+	window.location.href = "/";
+	post("/api", JSON.stringify({ All: null }));
+	post("/set-query", JSON.stringify(""));
+}
