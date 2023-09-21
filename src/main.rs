@@ -63,7 +63,7 @@ fn load(path: impl AsRef<Path>) -> String {
 
 type Datum = web::Data<State>;
 
-async fn index(data: Datum) -> impl Responder {
+async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     use std::fmt::Write;
     let mut body = String::new();
     let records = data.rows.read().unwrap();
@@ -78,7 +78,7 @@ async fn index(data: Datum) -> impl Responder {
     writeln!(body, "</tr>").unwrap();
     for record in records.iter() {
         writeln!(body, "<tr>").unwrap();
-        write!(body, "<td><a href=/pic?id={0}>{}</a></td>", record.id).unwrap();
+        write!(body, "<td><a href=/?id={0}>{}</a></td>", record.id).unwrap();
         for val in record.vals.iter() {
             write!(body, "<td>{val:.6}</td>").unwrap();
         }
@@ -87,17 +87,17 @@ async fn index(data: Datum) -> impl Responder {
     writeln!(body, "</table>").unwrap();
 
     let index = load("static/index.html");
-    HttpResponse::Ok().body(index.replace("{{body}}", &body))
-}
-
-async fn pic(data: Datum, req: HttpRequest) -> impl Responder {
-    // let records = data.records.read().unwrap();
-    let map = data.map.read().unwrap();
     let query = req.query_string();
-    let sp: Vec<_> = query.split('=').collect();
-    // TODO cache the generated SVG files
-    let mol = Molecule::from_mapped_smiles(&map[sp[1]]).unwrap();
-    HttpResponse::Ok().body(mol.to_svg())
+    let index = if !query.is_empty() {
+        let map = data.map.read().unwrap();
+        let sp: Vec<_> = query.split('=').collect();
+        // TODO cache the generated SVG files
+        let mol = Molecule::from_mapped_smiles(&map[sp[1]]).unwrap();
+        index.replace("{{pic}}", &mol.to_svg())
+    } else {
+        index.replace("{{pic}}", "")
+    };
+    HttpResponse::Ok().body(index.replace("{{body}}", &body))
 }
 
 #[allow(unused)]
@@ -189,7 +189,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         App::new()
             .app_data(state.clone())
             .route("/", web::get().to(index))
-            .route("/pic", web::get().to(pic))
             .route("/css/{filename:.*}", web::get().to(css_file))
             .route("/js/{filename:.*}", web::get().to(js_file))
     })

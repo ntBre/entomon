@@ -11,14 +11,23 @@
   <body>
     <main>
 
-      <label for="query">Query:</label><br>
-      <input id="query" type="text" name="query" autocomplete="off"><br>
-      <button onclick="doQuery()" type="submit" value="Submit">Submit</button>
-      <button name="" value="">Reset</button>
+      <div class="row">
+	<div class="col">
+	  <label for="query">Query:</label><br>
+	  <input id="query" type="text" name="query" autocomplete="off"><br>
+	  <button onclick="doQuery()" type="submit" value="Submit">Submit</button>
+	  <p>
+	    {{body}}
+	  </p>
+	</div>
+	<div class="col">
+	  <p>
+	    {{pic}}
+	  </p>
+	</div>
+      </div>
 
-      <p>
-	{{body}}
-      </p>
+
     </main>
   </body>
 </html>

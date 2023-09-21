@@ -1,4 +1,9 @@
-table {
+.row {
+    display: flex;
+}
+
+.column {
+    flex: 50%;
 }
 
 table, th, td {
