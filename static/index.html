@@ -7,15 +7,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <script type="text/javascript" src="js/sort.js"></script>
+  <script type="text/javascript" src="js/query.js"></script>
   <body>
     <main>
 
-      <form action="/">
-	<label for="query">Query:</label><br>
-	<input type="text" name="query" autocomplete="off"><br>
-	<input type="submit" value="Submit">
-	<button name="" value="">Reset</button>
-      </form>
+      <label for="query">Query:</label><br>
+      <input id="query" type="text" name="query" autocomplete="off"><br>
+      <button onclick="doQuery()" type="submit" value="Submit">Submit</button>
+      <button name="" value="">Reset</button>
 
       <p>
 	{{body}}

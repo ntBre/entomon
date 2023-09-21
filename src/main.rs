@@ -3,7 +3,6 @@
 //! web ui for debugging torsion multiplicity issues
 
 use actix_files::NamedFile;
-use percent_encoding::percent_decode_str;
 use std::path::PathBuf;
 use std::{
     collections::HashMap,
@@ -64,59 +63,7 @@ fn load(path: impl AsRef<Path>) -> String {
 
 type Datum = web::Data<State>;
 
-// we want to return a function that filters elements
-fn parse_query(s: &str) -> impl Fn(Vec<f64>) -> bool {
-    let s = percent_decode_str(s).decode_utf8().unwrap();
-    let mut chars = s.chars().peekable();
-    let mut field = None;
-    let mut fun: Option<fn(&f64, &f64) -> bool> = None;
-    let mut digit = String::new();
-    let mut abs = false;
-    while let Some(c) = chars.next() {
-        match c {
-            '|' => abs = true,
-            '$' => {
-                field = chars.next().unwrap().to_digit(10);
-            }
-            '>' => {
-                if chars.peek().is_some_and(|&c| c == '=') {
-                    fun = Some(f64::ge);
-                    chars.next().unwrap();
-                } else {
-                    fun = Some(f64::gt)
-                }
-            }
-            '<' => {
-                if chars.peek().is_some_and(|&c| c == '=') {
-                    fun = Some(f64::le);
-                    chars.next().unwrap();
-                } else {
-                    fun = Some(f64::lt)
-                }
-            }
-            '0'..='9' | '.' | '-' => digit.push(c),
-            _ => todo!("{}", c),
-        }
-    }
-    let digit = digit.parse::<f64>().unwrap();
-    move |x: Vec<f64>| {
-        let mut v = x[field.unwrap() as usize - 1];
-        if abs {
-            v = v.abs();
-        }
-        (fun.unwrap())(&v, &digit)
-    }
-}
-
-async fn index(data: Datum, req: HttpRequest) -> impl Responder {
-    let s = req.query_string();
-    let sp: Vec<_> = s.split('=').collect();
-    let query = if let Some(s) = sp.get(1) && !s.is_empty() {
-        Some(parse_query(s))
-    } else {
-        None
-    };
-
+async fn index(data: Datum) -> impl Responder {
     use std::fmt::Write;
     let mut body = String::new();
     let records = data.rows.read().unwrap();
@@ -130,18 +77,12 @@ async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     }
     writeln!(body, "</tr>").unwrap();
     for record in records.iter() {
-        // either the query is empty or it is some and matches
-        if query.as_ref().is_some_and(|q| q(record.vals.clone()))
-            || query.as_ref().is_none()
-        {
-            writeln!(body, "<tr>").unwrap();
-            write!(body, "<td><a href=/pic?id={0}>{}</a></td>", record.id)
-                .unwrap();
-            for val in record.vals.iter() {
-                write!(body, "<td>{val:.6}</td>").unwrap();
-            }
-            writeln!(body, "</tr>").unwrap();
+        writeln!(body, "<tr>").unwrap();
+        write!(body, "<td><a href=/pic?id={0}>{}</a></td>", record.id).unwrap();
+        for val in record.vals.iter() {
+            write!(body, "<td>{val:.6}</td>").unwrap();
         }
+        writeln!(body, "</tr>").unwrap();
     }
     writeln!(body, "</table>").unwrap();
 
