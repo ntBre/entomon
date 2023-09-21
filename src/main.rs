@@ -237,18 +237,14 @@ fn build_rows(records: Vec<Vec<Record>>) -> Vec<Row> {
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let tm = load_records(
+    let records = [
         "/home/brent/omsf/projects/benchmarking/output/industry/tm/dde.csv",
-    );
-    let sage_tm = load_records(
         "/home/brent/omsf/projects/benchmarking/output/industry/sage-tm/dde.csv",
-    );
-    let sage = load_records(
         "/home/brent/omsf/projects/benchmarking/output/industry/sage-2.1.0/dde.csv",
-    );
+    ].into_iter().map(load_records).collect();
 
     let names = vec!["TM".to_owned(), "Sage-TM".to_owned(), "Sage".to_owned()];
-    let rows = build_rows(vec![tm, sage_tm, sage]);
+    let rows = build_rows(records);
 
     let map = load_dataset(
         "/home/brent/omsf/projects/benchmarking/datasets/industry.json",
