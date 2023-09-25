@@ -4,10 +4,12 @@
 
 use data::{build_rows, load_dataset, load_records};
 use serde::Deserialize;
-use server::{api, css_file, get_data, index, js_file, set_query, State};
+use server::{api, get_data, index, set_query, State};
 use std::{error::Error, path::Path};
 
 use actix_web::{web, App, HttpServer};
+
+use crate::server::file_handler;
 
 mod data;
 mod server;
@@ -55,8 +57,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .route("/api", web::post().to(api))
             .route("/api", web::get().to(get_data))
             .route("/set-query", web::post().to(set_query))
-            .route("/css/{filename:.*}", web::get().to(css_file))
-            .route("/js/{filename:.*}", web::get().to(js_file))
+            .route("/css/{filename:.*}", web::get().to(file_handler))
+            .route("/js/{filename:.*}", web::get().to(file_handler))
     })
     .bind((ADDR, PORT))?
     .run()

@@ -1,12 +1,6 @@
-use actix_files::NamedFile;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::{
-    collections::HashMap,
-    fs::{self},
-    path::Path,
-    sync::RwLock,
-};
+use std::{collections::HashMap, sync::RwLock};
 
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use ligand::molecule::Molecule;
@@ -44,23 +38,16 @@ impl State {
     }
 }
 
-// copy pasta from berry-patch
-macro_rules! file_handlers {
-($($name:ident => $path:expr$(,)*)*) => {
-	$(
-	   pub async fn $name(req: HttpRequest) -> actix_web::Result<NamedFile> {
-		let dir = Path::new($path);
-		let path: PathBuf = req.match_info()
-		    .query("filename").parse().unwrap();
-		Ok(NamedFile::open(dir.join(path))?)
-	    }
-	)*
-}
-}
-
-file_handlers! {
-    css_file => "css/"
-    js_file => "js/"
+pub async fn file_handler(req: HttpRequest) -> impl Responder {
+    let path: PathBuf = req.match_info().query("filename").parse().unwrap();
+    let mut body = "";
+    match path.to_str().unwrap() {
+        "style.css" => body = include_str!("../css/style.css"),
+        "sort.js" => body = include_str!("../js/sort.js"),
+        "query.js" => body = include_str!("../js/query.js"),
+        s => eprintln!("unrecognized file {s}"),
+    };
+    HttpResponse::Ok().body(body)
 }
 
 pub async fn get_data(data: Datum) -> impl Responder {
@@ -125,8 +112,7 @@ pub async fn index(data: Datum, req: HttpRequest) -> impl Responder {
     }
     writeln!(body, "</table>").unwrap();
 
-    let index = fs::read_to_string("static/index.html")
-        .unwrap()
+    let index = include_str!("../static/index.html")
         .replace("{{query}}", &data.query.read().unwrap());
     let query = req.query_string();
     let index = if !query.is_empty() {
