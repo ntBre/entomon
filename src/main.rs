@@ -28,11 +28,16 @@ impl Config {
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let Some(inp) = std::env::args().nth(1) else {
+        eprintln!("Usage: entomon INPUT_FILE");
+        std::process::exit(1);
+    };
+
     let Config {
         records,
         names,
         dataset,
-    } = Config::load("testfiles/test.toml");
+    } = Config::load(inp);
 
     let records = records.into_iter().map(load_records).collect();
     let rows = build_rows(records);
